@@ -109,8 +109,8 @@ export class PickerBase extends SizedMixin(Focusable) {
     @property({ type: String })
     public value = '';
 
-    @property({ type: String })
-    public selectedItemText = '';
+    @property({ attribute: false })
+    public selectedItem?: MenuItem;
 
     private closeOverlay?: () => void;
 
@@ -198,9 +198,9 @@ export class PickerBase extends SizedMixin(Focusable) {
     };
 
     public async setValueFromItem(item: MenuItem): Promise<void> {
-        const oldSelectedItemText = this.selectedItemText;
+        const oldSelectedItem = this.selectedItem;
         const oldValue = this.value;
-        this.selectedItemText = item.itemText;
+        this.selectedItem = item;
         this.value = item.value;
         this.open = false;
         await this.updateComplete;
@@ -210,18 +210,13 @@ export class PickerBase extends SizedMixin(Focusable) {
             })
         );
         if (!applyDefault) {
-            this.selectedItemText = oldSelectedItemText;
+            this.selectedItem = oldSelectedItem;
             this.value = oldValue;
             this.open = true;
             return;
         }
-        const parentElement = item.parentElement as Element;
-        const selectedItem = parentElement.querySelector(
-            '[selected]'
-        ) as MenuItem;
-        /* c8 ignore next 3 */
-        if (selectedItem) {
-            selectedItem.selected = false;
+        if (oldSelectedItem) {
+            oldSelectedItem.selected = false;
         }
         item.selected = true;
     }
@@ -307,8 +302,8 @@ export class PickerBase extends SizedMixin(Focusable) {
                     id="label"
                     class=${ifDefined(this.value ? undefined : 'placeholder')}
                 >
-                    ${this.value
-                        ? this.selectedItemText
+                    ${this.value && this.selectedItem
+                        ? this.selectedItem.itemText
                         : html`
                               <slot name="label">${this.label}</slot>
                           `}
@@ -366,7 +361,11 @@ export class PickerBase extends SizedMixin(Focusable) {
 
     protected updated(changedProperties: PropertyValues): void {
         super.updated(changedProperties);
-        if (changedProperties.has('value') && this.optionsMenu) {
+        if (
+            changedProperties.has('value') &&
+            !changedProperties.has('selectedItem') &&
+            this.optionsMenu
+        ) {
             this.manageSelection();
         }
         if (changedProperties.has('disabled') && this.disabled) {
@@ -403,10 +402,10 @@ export class PickerBase extends SizedMixin(Focusable) {
             });
             if (selectedItem) {
                 selectedItem.selected = true;
-                this.selectedItemText = selectedItem.itemText;
+                this.selectedItem = selectedItem;
             } else {
                 this.value = '';
-                this.selectedItemText = '';
+                this.selectedItem = undefined;
             }
             this.optionsMenu.updateSelectedItemIndex();
             return;
@@ -451,12 +450,9 @@ export class Picker extends PickerBase {
             this.open = true;
             return;
         }
-        let selectedIndex = -1;
-        this.optionsMenu.menuItems.map((item, i) => {
-            if (this.value === item.value && !item.disabled) {
-                selectedIndex = i;
-            }
-        });
+        const selectedIndex = this.selectedItem
+            ? this.optionsMenu.menuItems.indexOf(this.selectedItem)
+            : -1;
         // use a positive offset to find the first non-disabled item when no selection is available.
         const nextOffset = !this.value || code === 'ArrowRight' ? 1 : -1;
         let nextIndex = selectedIndex + nextOffset;
