@@ -55,7 +55,7 @@ test-results.xml
 /test/visual/screenshots-current/**/*.png
 /test/visual/**/local/
 !test/visual/**/*.js
-test/visual/screenshots-baseline/ci/userDataDir/
+test/visual/screenshots-baseline/
 
 package-lock.json
 custom-elements.json

@@ -29,25 +29,39 @@ commands:
                   keys:
                       - v2-golden-images-<< pipeline.parameters.current_golden_images_hash >>-<< parameters.regression_color >>-<< parameters.regression_scale >>-<< parameters.regression_dir >>-
                       - v2-golden-images-main-<< parameters.regression_color >>-<< parameters.regression_scale >>-<< parameters.regression_dir >>-
-            - run: MOCHA_FILE=./results/test-results.xml yarn test:visual:ci --concurrency=2  --reporter mocha-junit-reporter --color=<< parameters.regression_color >> --scale=<< parameters.regression_scale >> --dir=<< parameters.regression_dir >>
+            - run:
+                  name: 'Count baseline images'
+                  command: |
+                      echo 'export BASELINE_IMAGE_COUNT=$(find test/visual/screenshots-baseline -type f | wc -l)' >> $BASH_ENV
+                      echo ${BASELINE_IMAGE_COUNT}
+            - run: |
+                  yarn test:ci --config web-test-runner.config.ci.mjs --group vrt-<< parameters.regression_color >>-<< parameters.regression_scale >>-<< parameters.regression_dir >>
             - run:
                   when: on_fail
-                  command: cp -RT test/visual/screenshots-current/ci test/visual/screenshots-baseline/ci
+                  command: |
+                      test -d test/visual/screenshots-current/updates/Chromium && cp -R test/visual/screenshots-current/updates/Chromium test/visual/screenshots-baseline/Chromium
+            - run:
+                  when: on_success
+                  name: 'Count current images'
+                  command: |
+                      echo 'export CURRENT_IMAGE_COUNT=$(find test/visual/screenshots-baseline -type f | wc -l)' >> $BASH_ENV
+                      echo ${CURRENT_IMAGE_COUNT}
+                      if [[ ${BASELINE_IMAGE_COUNT} != ${CURRENT_IMAGE_COUNT} ]]; then exit 1; fi
             - save_cache:
                   when: on_fail
                   name: Build Golden Images Revision Cache
                   paths:
-                      - test/visual/screenshots-baseline/ci
+                      - test/visual/screenshots-baseline
                   key: v2-golden-images-{{ .Revision }}-<< parameters.regression_color >>-<< parameters.regression_scale >>-<< parameters.regression_dir >>-{{ epoch }}
             - save_cache:
                   name: Build Golden Images Branch Cache
                   paths:
-                      - test/visual/screenshots-baseline/ci
-                  key: v2-golden-images-{{ .Branch }}-<< parameters.regression_color >>-<< parameters.regression_scale >>-<< parameters.regression_dir >>-{{ epoch }}
+                      - test/visual/screenshots-baseline
+                  key: v2-golden-images-{{ .Revision }}-<< parameters.regression_color >>-<< parameters.regression_scale >>-<< parameters.regression_dir >>-{{ epoch }}
             - store_test_results:
                   path: /root/project/results/
             - store_artifacts:
-                  path: test/visual/screenshots-current
+                  path: test/visual/screenshots-baseline
 
 jobs:
     commitlint:
@@ -107,7 +121,7 @@ jobs:
             - run: yarn analyze
             - run:
                   name: Run tests
-                  command: yarn test:ci --config web-test-runner.config.ci.js
+                  command: yarn test:ci --config web-test-runner.config.ci.mjs --group unit --coverage
             - store_test_results:
                   path: /root/project/results/
             - store_artifacts:

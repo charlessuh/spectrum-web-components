@@ -1,6 +1,7 @@
 {
     "compilerOptions": {
-        "module": "commonjs",
+        "module": "esNext",
+        "moduleResolution": "node",
         "target": "ES2017",
         "rootDir": ".",
         "sourceMap": false,

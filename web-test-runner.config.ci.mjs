@@ -9,8 +9,18 @@ the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTA
 OF ANY KIND, either express or implied. See the License for the specific language
 governing permissions and limitations under the License.
 */
-const { buildScreenshots } = require('./regenerate.js');
+import standard from './web-test-runner.config.mjs';
+import { defaultReporter } from '@web/test-runner';
+import { junitReporter } from '@web/test-runner-junit-reporter';
 
-const { color, scale, dir, concurrency } = require('yargs').argv;
+standard.reporters = [
+    // use the default reporter only for reporting test progress
+    defaultReporter({ reportTestResults: false, reportTestProgress: true }),
+    // use another reporter to report test results
+    junitReporter({
+        outputPath: './results/test-results.xml', // default `'./test-results.xml'`
+        reportLogs: true, // default `false`
+    }),
+];
 
-buildScreenshots('ci', color, scale, dir, concurrency);
+export default standard;
